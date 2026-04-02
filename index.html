@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>My IPTV Player</title>
+<title>IPTV Player</title>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
 <style>
   body {
     margin: 0;
@@ -21,18 +24,12 @@
     border-right: 2px solid #333;
   }
 
-  /* FIXED HEADER */
   #sidebarHeader {
     position: sticky;
     top: 0;
     background: #000;
     z-index: 10;
     padding: 10px;
-  }
-
-  #sidebarHeader h2 {
-    margin: 0 0 10px 0;
-    text-align: center;
   }
 
   #search {
@@ -42,7 +39,6 @@
     outline: none;
   }
 
-  /* SCROLLABLE CHANNEL LIST */
   #channelList {
     flex: 1;
     overflow-y: auto;
@@ -89,17 +85,19 @@
 </div>
 
 <div id="main">
-  <video id="player" controls autoplay></video>
+  <video id="player" controls></video>
   <div id="controls">
     <p id="nowPlaying">Select a channel</p>
   </div>
 </div>
 
 <script>
-const playlistUrl = "https://raw.githubusercontent.com/adg-cloud/astro/refs/heads/main/astro.m3u";
+const playlistUrl = "https://raw.githubusercontent.com/adg-cloud/astro/main/astro.m3u";
 
 let channels = [];
+let hls;
 
+// LOAD PLAYLIST
 fetch(playlistUrl)
   .then(res => res.text())
   .then(data => {
@@ -107,16 +105,23 @@ fetch(playlistUrl)
 
     for (let i = 0; i < lines.length; i++) {
       if (lines[i].startsWith("#EXTINF")) {
-        const name = lines[i].split(",")[1];
-        const url = lines[i + 1];
+        const name = lines[i].split(",")[1]?.trim() || "Unknown";
+        const url = lines[i + 1]?.trim();
 
-        channels.push({ name, url });
+        if (url) {
+          channels.push({ name, url });
+        }
       }
     }
 
     displayChannels(channels);
+  })
+  .catch(err => {
+    console.error("Playlist load failed:", err);
+    alert("Failed to load playlist.");
   });
 
+// DISPLAY CHANNELS
 function displayChannels(list) {
   const container = document.getElementById("channelList");
   container.innerHTML = "";
@@ -132,102 +137,44 @@ function displayChannels(list) {
   });
 }
 
+// PLAY CHANNEL
 function playChannel(channel) {
   const player = document.getElementById("player");
 
-  player.src = channel.url;
-  player.muted = true;
+  // destroy previous HLS instance
+  if (hls) {
+    hls.destroy();
+  }
 
-  player.play().then(() => {
-    setTimeout(() => {
-      player.muted = false;
-    }, 1000);
-  });
+  if (channel.url.includes(".m3u8") && Hls.isSupported()) {
+    hls = new Hls();
+    hls.loadSource(channel.url);
+    hls.attachMedia(player);
 
-  document.getElementById("nowPlaying").textContent = "Now Playing: " + channel.name;
+    hls.on(Hls.Events.MANIFEST_PARSED, function () {
+      player.play().catch(() => {});
+    });
+
+  } else {
+    player.src = channel.url;
+    player.play().catch(() => {});
+  }
+
+  document.getElementById("nowPlaying").textContent =
+    "Now Playing: " + channel.name;
 }
 
+// SEARCH
 document.getElementById("search").addEventListener("input", function() {
   const value = this.value.toLowerCase();
-  const filtered = channels.filter(c => c.name.toLowerCase().includes(value));
+
+  const filtered = channels.filter(c =>
+    c.name.toLowerCase().includes(value)
+  );
+
   displayChannels(filtered);
 });
-
-
-
-// BLOCK IF ALREADY FLAGGED
-if (localStorage.getItem("blocked") === "true") {
-  document.body.innerHTML = "<h1 style='color:red;position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);'>ACCESS DENIED</h1>";
-  throw new Error("Blocked");
-}
-
-// BLOCK RIGHT CLICK
-document.addEventListener("contextmenu", e => e.preventDefault());
-
-// BLOCK KEYS
-document.addEventListener("keydown", function(e) {
-
-  // F12
-  if (e.key === "F12") blockUser();
-
-  // Ctrl+Shift+I / C / J
-  if (e.ctrlKey && e.shiftKey && ["I","C","J"].includes(e.key.toUpperCase())) {
-    blockUser();
-  }
-
-  // Ctrl+U
-  if (e.ctrlKey && e.key.toUpperCase() === "U") {
-    blockUser();
-  }
-});
-
-// DEVTOOLS DETECTION
-setInterval(function() {
-  const widthThreshold = window.outerWidth - window.innerWidth > 160;
-  const heightThreshold = window.outerHeight - window.innerHeight > 160;
-
-  if (widthThreshold || heightThreshold) {
-    blockUser();
-  }
-}, 1000);
-
-
-  // ✅ Check agad kung blocked
-  if (localStorage.getItem("blocked") === "true") {
-    blockUser();
-  }
-
-  // BLOCK FUNCTION
-  function blockUser() {
-    localStorage.setItem("blocked", "true");
-
-    document.body.innerHTML = `
-      <h1 style="
-        color:red;
-        position:fixed;
-        top:50%;
-        left:50%;
-        transform:translate(-50%, -50%);
-        font-size:40px;
-        z-index:9999;
-      ">
-        ACCESS DENIED
-      </h1>
-    `;
-
-    document.addEventListener("click", e => e.stopPropagation(), true);
-    document.addEventListener("keydown", e => e.preventDefault(), true);
-    document.addEventListener("contextmenu", e => e.preventDefault(), true);
-    document.body.style.overflow = "hidden";
-  }
-
-  // ✅ Rest of your code (channel loading, search, etc.)
-  // ...
-
-
-
 </script>
-<script disable-devtool-auto
-src="https://cdn.jsdelivr.net/npm/disable-devtool"></script>
+
 </body>
 </html>
