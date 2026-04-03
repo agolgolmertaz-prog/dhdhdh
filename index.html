@@ -45,16 +45,44 @@
 <body>
 
 <div class="player-container">
-  <video controls autoplay>
+  <video id="player" controls autoplay>
     <source src="https://videos.gia.tv/giatv/movies/playlist/211473/YTDown_com_YouTube_It_Takes_a_Man_and_a_Woman_FULL_MOVIE_Jo_Media_XkzDWNM6Rdo_003_480p.mp4" type="video/mp4">
     Your browser does not support MP4 playback.
   </video>
 </div>
 
 <script>
-  // Try to force fullscreen for better IPTV/TV experience
-  const video = document.querySelector('video');
+  const video = document.getElementById('player');
+  const STORAGE_KEY = 'video-progress';
 
+  // Load saved time
+  video.addEventListener('loadedmetadata', () => {
+    const savedTime = localStorage.getItem(STORAGE_KEY);
+    if (savedTime) {
+      video.currentTime = parseFloat(savedTime);
+    }
+
+    // Try autoplay
+    video.play().catch(() => {});
+  });
+
+  // Save progress every 1 second
+  setInterval(() => {
+    if (!video.paused && !video.ended) {
+      localStorage.setItem(STORAGE_KEY, video.currentTime);
+    }
+  }, 1000);
+
+  // Save on pause / exit
+  video.addEventListener('pause', () => {
+    localStorage.setItem(STORAGE_KEY, video.currentTime);
+  });
+
+  window.addEventListener('beforeunload', () => {
+    localStorage.setItem(STORAGE_KEY, video.currentTime);
+  });
+
+  // Try fullscreen for TV
   video.addEventListener('loadeddata', () => {
     if (video.requestFullscreen) {
       video.requestFullscreen().catch(() => {});
