@@ -32,7 +32,7 @@
 <body>
 
 <div class="player-container">
-  <video id="player" controls autoplay playsinline>
+  <video id="player" autoplay playsinline>
     <source src="https://videos.gia.tv/giatv/movies/playlist/211473/YTDown_com_YouTube_It_Takes_a_Man_and_a_Woman_FULL_MOVIE_Jo_Media_XkzDWNM6Rdo_003_480p.mp4" type="video/mp4">
   </video>
 </div>
@@ -42,11 +42,11 @@
 
   const STORAGE_KEY = 'video-progress';
 
-  // ===== MANUAL CROP SETTINGS (EDIT VALUES HERE) =====
-  const CROP_TOP = 90;    // px
-  const CROP_BOTTOM = 90; // px
-  const CROP_LEFT = 0;   // px
-  const CROP_RIGHT = 0;  // px
+  // ===== MANUAL CROP SETTINGS =====
+  const CROP_TOP = 80;
+  const CROP_BOTTOM = 80;
+  const CROP_LEFT = 0;
+  const CROP_RIGHT = 0;
 
   // ===== AUTO-STRETCH SETTINGS =====
   const AUTO_STRETCH_LEFT = true;
@@ -68,13 +68,20 @@
 
   applyCropAndStretch();
 
-  // Load saved time
+  // Load saved time and autoplay
   video.addEventListener('loadedmetadata', () => {
     const savedTime = localStorage.getItem(STORAGE_KEY);
     if (savedTime) {
       video.currentTime = parseFloat(savedTime);
     }
-    video.play().catch(() => {});
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // Try unmuted autoplay workaround
+        video.muted = false;
+        video.play().catch(() => {});
+      });
+    }
   });
 
   // Save progress
@@ -83,10 +90,6 @@
       localStorage.setItem(STORAGE_KEY, video.currentTime);
     }
   }, 1000);
-
-  video.addEventListener('pause', () => {
-    localStorage.setItem(STORAGE_KEY, video.currentTime);
-  });
 
   window.addEventListener('beforeunload', () => {
     localStorage.setItem(STORAGE_KEY, video.currentTime);
@@ -103,9 +106,6 @@
   if (screen.orientation && screen.orientation.lock) {
     screen.orientation.lock('landscape').catch(() => {});
   }
-
-  // Unmute to allow sound
-  video.muted = false;
 </script>
 
 </body>
