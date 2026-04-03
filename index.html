@@ -11,14 +11,15 @@
       background: black;
       height: 100%;
       overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
     }
 
     .player-container {
-      position: relative;
+      position: absolute;
+      top: 100px;    /* ADJUST HERE */
+      bottom: 100px; /* ADJUST HERE */
+      left: 100px;   /* ADJUST HERE */
+      right: 100px;  /* ADJUST HERE */
+
       transform: rotate(90deg);
       transform-origin: center center;
     }
@@ -30,22 +31,6 @@
       background: black;
     }
 
-    .controls {
-      position: fixed;
-      bottom: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.6);
-      padding: 10px 15px;
-      border-radius: 10px;
-      color: white;
-      font-family: sans-serif;
-    }
-
-    input[type=range] {
-      width: 200px;
-    }
-
     @media (orientation: landscape) {
       .player-container {
         transform: none;
@@ -55,41 +40,15 @@
 </head>
 <body>
 
-<div id="container" class="player-container">
+<div class="player-container">
   <video id="player" controls autoplay>
     <source src="https://videos.gia.tv/giatv/movies/playlist/211473/YTDown_com_YouTube_It_Takes_a_Man_and_a_Woman_FULL_MOVIE_Jo_Media_XkzDWNM6Rdo_003_480p.mp4" type="video/mp4">
   </video>
 </div>
 
-<div class="controls">
-  Resize: <input type="range" id="resize" min="30" max="100" value="70">
-</div>
-
 <script>
   const video = document.getElementById('player');
-  const container = document.getElementById('container');
-  const resizeSlider = document.getElementById('resize');
-
   const STORAGE_KEY = 'video-progress';
-  const SIZE_KEY = 'video-size';
-
-  // Apply saved size
-  function applySize(size) {
-    const width = window.innerWidth * (size / 100);
-    const height = width * 9 / 16;
-    container.style.width = width + 'px';
-    container.style.height = height + 'px';
-  }
-
-  const savedSize = localStorage.getItem(SIZE_KEY) || 70;
-  resizeSlider.value = savedSize;
-  applySize(savedSize);
-
-  resizeSlider.addEventListener('input', () => {
-    const val = resizeSlider.value;
-    applySize(val);
-    localStorage.setItem(SIZE_KEY, val);
-  });
 
   // Load saved time
   video.addEventListener('loadedmetadata', () => {
