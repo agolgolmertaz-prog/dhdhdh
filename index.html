@@ -1,182 +1,37 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>IPTV Player</title>
-
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
-<style>
-  body {
-    margin: 0;
-    font-family: Arial;
-    background: #111;
-    color: white;
-    display: flex;
-  }
-
-  #sidebar {
-    width: 300px;
-    background: #1c1c1c;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    border-right: 2px solid #333;
-  }
-
-  #sidebarHeader {
-    position: sticky;
-    top: 0;
-    background: #000;
-    z-index: 10;
-    padding: 10px;
-  }
-
-  #search {
-    width: 100%;
-    padding: 8px;
-    border: none;
-    outline: none;
-  }
-
-  #channelList {
-    flex: 1;
-    overflow-y: auto;
-  }
-
-  .channel {
-    padding: 10px;
-    border-bottom: 1px solid #333;
-    cursor: pointer;
-  }
-
-  .channel:hover {
-    background: #333;
-  }
-
-  #main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-  }
-
-  video {
-    width: 100%;
-    height: 70vh;
-    background: black;
-  }
-
-  #controls {
-    padding: 10px;
-    background: #000;
-  }
-</style>
+  <meta charset="utf-8">
+  <title>DASH Multi Player</title>
+  <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
 </head>
-
 <body>
 
-<div id="sidebar">
-  <div id="sidebarHeader">
-    <h2>Channels</h2>
-    <input type="text" id="search" placeholder="Search channel...">
-  </div>
+<h2>My DASH Player</h2>
 
-  <div id="channelList"></div>
-</div>
+<video id="videoPlayer" controls autoplay style="width: 100%; max-width: 800px;"></video>
 
-<div id="main">
-  <video id="player" controls></video>
-  <div id="controls">
-    <p id="nowPlaying">Select a channel</p>
-  </div>
-</div>
+<br><br>
+
+<button onclick="loadStream(1)">Channel 1</button>
+<button onclick="loadStream(2)">Channel 2</button>
 
 <script>
-const playlistUrl = "https://raw.githubusercontent.com/adg-cloud/astro/main/astro.m3u";
+  var player = dashjs.MediaPlayer().create();
 
-let channels = [];
-let hls;
+  var streams = {
+    1: "http://136.239.158.10:6610/001/2/ch00000090990000001065/manifest.mpd?AuthInfo=v87HD9rEhwHiAdYyrP20Tg5pgSMSITY%2FHYvvCWJRp%2BosKg8aLji3LHWqHUI%2FwQyJytokK1MIobcue1ImXa0ZEA%3D%3D&version=v1.0&BreakPoint=0&virtualDomain=001.live_hls.zte.com&programid=ch00000000000000001085&contentid=ch00000000000000001085&videoid=ch00000090990000001065&recommendtype=0&userid=1362658369654&boid=001&stbid=02%3A00%3A00%3A00%3A00%3A00&terminalflag=1&profilecode=&usersessionid=UVJL5F87UVBXXX&NeedJITP=1&JITPMediaType=DASH&JITPDRMType=NO",
+    
+    2: "http://136.239.159.20:6610/001/2/ch00000090990000001077/manifest.mpd?AuthInfo=v87HD9rEhwHiAdYyrP20Tg5pgSMSITY%2FHYvvCWJRp%2BrHUpvQtyXgWxpVCozt4hcgytokK1MIobcue1ImXa0ZEA%3D%3D&version=v1.0&BreakPoint=0&virtualDomain=001.live_hls.zte.com&programid=ch00000000000000001136&contentid=ch00000000000000001136&videoid=ch00000090990000001077&recommendtype=0&userid=1863800460286&boid=001&stbid=02%3A00%3A00%3A00%3A00%3A00&terminalflag=1&profilecode=&usersessionid=EJ21Z5961VKXXX&NeedJITP=1&JITPMediaType=DASH&JITPDRMType=NO"
+  };
 
-// LOAD PLAYLIST
-fetch(playlistUrl)
-  .then(res => res.text())
-  .then(data => {
-    const lines = data.split("\n");
-
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].startsWith("#EXTINF")) {
-        const name = lines[i].split(",")[1]?.trim() || "Unknown";
-        const url = lines[i + 1]?.trim();
-
-        if (url) {
-          channels.push({ name, url });
-        }
-      }
-    }
-
-    displayChannels(channels);
-  })
-  .catch(err => {
-    console.error("Playlist load failed:", err);
-    alert("Failed to load playlist.");
-  });
-
-// DISPLAY CHANNELS
-function displayChannels(list) {
-  const container = document.getElementById("channelList");
-  container.innerHTML = "";
-
-  list.forEach(channel => {
-    const div = document.createElement("div");
-    div.className = "channel";
-    div.textContent = channel.name;
-
-    div.onclick = () => playChannel(channel);
-
-    container.appendChild(div);
-  });
-}
-
-// PLAY CHANNEL
-function playChannel(channel) {
-  const player = document.getElementById("player");
-
-  // destroy previous HLS instance
-  if (hls) {
-    hls.destroy();
+  function loadStream(channel) {
+    player.initialize(document.querySelector("#videoPlayer"), streams[channel], true);
   }
 
-  if (channel.url.includes(".m3u8") && Hls.isSupported()) {
-    hls = new Hls();
-    hls.loadSource(channel.url);
-    hls.attachMedia(player);
-
-    hls.on(Hls.Events.MANIFEST_PARSED, function () {
-      player.play().catch(() => {});
-    });
-
-  } else {
-    player.src = channel.url;
-    player.play().catch(() => {});
-  }
-
-  document.getElementById("nowPlaying").textContent =
-    "Now Playing: " + channel.name;
-}
-
-// SEARCH
-document.getElementById("search").addEventListener("input", function() {
-  const value = this.value.toLowerCase();
-
-  const filtered = channels.filter(c =>
-    c.name.toLowerCase().includes(value)
-  );
-
-  displayChannels(filtered);
-});
+  // auto load first stream
+  loadStream(1);
 </script>
-<script disable-devtool-auto
-src="https://cdn.jsdelivr.net/npm/disable-devtool"></script>
 
 </body>
 </html>
