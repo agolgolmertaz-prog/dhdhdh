@@ -12,15 +12,13 @@
       height: 100%;
       overflow: hidden;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
     }
 
-    /* Force landscape container */
     .player-container {
       position: relative;
-      width: 100vh;
-      height: 56.25vh; /* 16:9 ratio */
       transform: rotate(90deg);
       transform-origin: center center;
     }
@@ -32,28 +30,66 @@
       background: black;
     }
 
-    /* Desktop / TV fix */
+    .controls {
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.6);
+      padding: 10px 15px;
+      border-radius: 10px;
+      color: white;
+      font-family: sans-serif;
+    }
+
+    input[type=range] {
+      width: 200px;
+    }
+
     @media (orientation: landscape) {
       .player-container {
         transform: none;
-        width: 100vw;
-        height: 100vh;
       }
     }
   </style>
 </head>
 <body>
 
-<div class="player-container">
+<div id="container" class="player-container">
   <video id="player" controls autoplay>
     <source src="https://videos.gia.tv/giatv/movies/playlist/211473/YTDown_com_YouTube_It_Takes_a_Man_and_a_Woman_FULL_MOVIE_Jo_Media_XkzDWNM6Rdo_003_480p.mp4" type="video/mp4">
-    Your browser does not support MP4 playback.
   </video>
+</div>
+
+<div class="controls">
+  Resize: <input type="range" id="resize" min="30" max="100" value="70">
 </div>
 
 <script>
   const video = document.getElementById('player');
+  const container = document.getElementById('container');
+  const resizeSlider = document.getElementById('resize');
+
   const STORAGE_KEY = 'video-progress';
+  const SIZE_KEY = 'video-size';
+
+  // Apply saved size
+  function applySize(size) {
+    const width = window.innerWidth * (size / 100);
+    const height = width * 9 / 16;
+    container.style.width = width + 'px';
+    container.style.height = height + 'px';
+  }
+
+  const savedSize = localStorage.getItem(SIZE_KEY) || 70;
+  resizeSlider.value = savedSize;
+  applySize(savedSize);
+
+  resizeSlider.addEventListener('input', () => {
+    const val = resizeSlider.value;
+    applySize(val);
+    localStorage.setItem(SIZE_KEY, val);
+  });
 
   // Load saved time
   video.addEventListener('loadedmetadata', () => {
@@ -61,19 +97,16 @@
     if (savedTime) {
       video.currentTime = parseFloat(savedTime);
     }
-
-    // Try autoplay
     video.play().catch(() => {});
   });
 
-  // Save progress every 1 second
+  // Save progress
   setInterval(() => {
     if (!video.paused && !video.ended) {
       localStorage.setItem(STORAGE_KEY, video.currentTime);
     }
   }, 1000);
 
-  // Save on pause / exit
   video.addEventListener('pause', () => {
     localStorage.setItem(STORAGE_KEY, video.currentTime);
   });
@@ -82,14 +115,14 @@
     localStorage.setItem(STORAGE_KEY, video.currentTime);
   });
 
-  // Try fullscreen for TV
+  // Fullscreen attempt
   video.addEventListener('loadeddata', () => {
     if (video.requestFullscreen) {
       video.requestFullscreen().catch(() => {});
     }
   });
 
-  // Lock orientation if supported
+  // Lock orientation
   if (screen.orientation && screen.orientation.lock) {
     screen.orientation.lock('landscape').catch(() => {});
   }
