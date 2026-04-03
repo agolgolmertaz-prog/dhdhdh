@@ -13,7 +13,7 @@
       overflow: hidden;
     }
 
-   
+  
 
     video {
       width: 100%;
@@ -32,14 +32,13 @@
 <body>
 
 <div class="player-container">
-  <video id="player" autoplay playsinline>
+  <video id="player" autoplay playsinline muted>
     <source src="https://videos.gia.tv/giatv/movies/playlist/211473/YTDown_com_YouTube_It_Takes_a_Man_and_a_Woman_FULL_MOVIE_Jo_Media_XkzDWNM6Rdo_003_480p.mp4" type="video/mp4">
   </video>
 </div>
 
 <script>
   const video = document.getElementById('player');
-
   const STORAGE_KEY = 'video-progress';
 
   // ===== MANUAL CROP SETTINGS =====
@@ -68,20 +67,13 @@
 
   applyCropAndStretch();
 
-  // Load saved time and autoplay
+  // Load saved time and autoplay muted
   video.addEventListener('loadedmetadata', () => {
     const savedTime = localStorage.getItem(STORAGE_KEY);
     if (savedTime) {
       video.currentTime = parseFloat(savedTime);
     }
-    const playPromise = video.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {
-        // Try unmuted autoplay workaround
-        video.muted = true;
-        video.play().catch(() => {});
-      });
-    }
+    video.play().catch(() => {});
   });
 
   // Save progress
@@ -106,7 +98,9 @@
   if (screen.orientation && screen.orientation.lock) {
     screen.orientation.lock('landscape').catch(() => {});
   }
-</script>
 
-</body>
-</html>
+  // Click to unmute and play sound
+  document.addEventListener('click', () => {
+    video.muted = false;
+    video.play().catch(() => {});
+  }, { once: tru
