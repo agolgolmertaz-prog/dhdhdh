@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Auto Refresh Player</title>
+  <title>Auto Resume Player</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.6/shaka-player.compiled.js"></script>
 
   <style>
@@ -26,16 +26,17 @@
 
 <body>
 
-<video id="video" controls autoplay></video>
+<video id="video" autoplay muted playsinline></video>
 
 <script>
   let player;
   const video = document.getElementById('video');
+
   const url = "https://cdn-ue1-prod.tsv2.amagi.tv/linear/amg01006-abs-cbn-kapcha-dash-abscbnono/index.mpd";
 
   async function loadPlayer() {
     if (player) {
-      await player.destroy(); // clean reload
+      await player.destroy();
     }
 
     player = new shaka.Player(video);
@@ -49,15 +50,18 @@
     });
 
     player.addEventListener('error', () => {
-      console.log("Error detected, reloading...");
+      console.log("Error detected → reload");
       reloadStream();
     });
 
     try {
       await player.load(url);
-      console.log("Stream loaded");
+      console.log("Loaded");
+
+      tryPlay();
+
     } catch (e) {
-      console.log("Load failed, retrying...");
+      console.log("Load failed → retry");
       setTimeout(reloadStream, 3000);
     }
   }
@@ -66,14 +70,47 @@
     loadPlayer();
   }
 
+  // 🔁 Try play (auto resume)
+  function tryPlay() {
+    video.play().catch(() => {
+      setTimeout(() => {
+        video.play();
+      }, 1000);
+    });
+  }
+
+  // 🎯 AUTO RESUME kapag nag pause
+  video.addEventListener('pause', () => {
+    console.log("Paused → resume");
+    tryPlay();
+  });
+
+  // 🎯 AUTO RESUME kapag nag buffering
+  video.addEventListener('waiting', () => {
+    console.log("Buffering → resume");
+    tryPlay();
+  });
+
+  // 🎯 Kapag natigil
+  video.addEventListener('stalled', () => {
+    console.log("Stalled → reload");
+    reloadStream();
+  });
+
+  // 🎯 Kapag nag end (rare sa live)
+  video.addEventListener('ended', () => {
+    console.log("Ended → reload");
+    reloadStream();
+  });
+
   // INITIAL LOAD
   loadPlayer();
 
-  // 🔁 AUTO REFRESH EVERY 14 MINUTES
+  // 🔁 AUTO REFRESH every 14 mins
   setInterval(() => {
-    console.log("Auto refreshing stream...");
+    console.log("Auto refresh...");
     reloadStream();
-  }, 14 * 60 * 1000); // 14 minutes
+  }, 14 * 60 * 1000);
 
 </script>
 
