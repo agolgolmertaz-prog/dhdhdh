@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Fullscreen Player</title>
+  <title>Auto Refresh Player</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.6/shaka-player.compiled.js"></script>
 
   <style>
@@ -21,32 +21,24 @@
       object-fit: contain;
       background: black;
     }
-
-    #btn {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 999;
-      padding: 10px 15px;
-      background: rgba(0,0,0,0.6);
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
   </style>
 </head>
 
 <body>
 
-<button id="btn">Fullscreen</button>
 <video id="video" controls autoplay></video>
 
 <script>
-  async function initPlayer() {
-    const video = document.getElementById('video');
-    const player = new shaka.Player(video);
+  let player;
+  const video = document.getElementById('video');
+  const url = "https://cdn-ue1-prod.tsv2.amagi.tv/linear/amg01006-abs-cbn-kapcha-dash-abscbnono/index.mpd";
 
-    player.addEventListener('error', e => console.error(e));
+  async function loadPlayer() {
+    if (player) {
+      await player.destroy(); // clean reload
+    }
+
+    player = new shaka.Player(video);
 
     player.configure({
       drm: {
@@ -56,23 +48,33 @@
       }
     });
 
+    player.addEventListener('error', () => {
+      console.log("Error detected, reloading...");
+      reloadStream();
+    });
+
     try {
-      await player.load("https://cdn-ue1-prod.tsv2.amagi.tv/linear/amg01006-abs-cbn-kapcha-dash-abscbnono/index.mpd");
-      console.log("Video loaded!");
-    } catch (err) {
-      console.error(err);
+      await player.load(url);
+      console.log("Stream loaded");
+    } catch (e) {
+      console.log("Load failed, retrying...");
+      setTimeout(reloadStream, 3000);
     }
   }
 
-  document.addEventListener('DOMContentLoaded', initPlayer);
+  function reloadStream() {
+    loadPlayer();
+  }
 
-  // fullscreen button
-  document.getElementById("btn").onclick = () => {
-    const elem = document.documentElement;
-    if (elem.requestFullscreen) {
-      elem.requestFullscreen();
-    }
-  };
+  // INITIAL LOAD
+  loadPlayer();
+
+  // 🔁 AUTO REFRESH EVERY 14 MINUTES
+  setInterval(() => {
+    console.log("Auto refreshing stream...");
+    reloadStream();
+  }, 14 * 60 * 1000); // 14 minutes
+
 </script>
 
 </body>
