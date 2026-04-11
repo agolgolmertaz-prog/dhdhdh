@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Auto Resume Player</title>
+  <title>Sound Player</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.6/shaka-player.compiled.js"></script>
 
   <style>
@@ -21,16 +21,34 @@
       object-fit: contain;
       background: black;
     }
+
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      cursor: pointer;
+      z-index: 10;
+    }
   </style>
 </head>
 
 <body>
 
-<video id="video" autoplay muted playsinline></video>
+<div id="overlay">CLICK TO START WITH SOUND 🔊</div>
+<video id="video" playsinline></video>
 
 <script>
   let player;
   const video = document.getElementById('video');
+  const overlay = document.getElementById('overlay');
 
   const url = "https://cdn-ue1-prod.tsv2.amagi.tv/linear/amg01006-abs-cbn-kapcha-dash-abscbnono/index.mpd";
 
@@ -49,19 +67,11 @@
       }
     });
 
-    player.addEventListener('error', () => {
-      console.log("Error detected → reload");
-      reloadStream();
-    });
+    player.addEventListener('error', () => reloadStream());
 
     try {
       await player.load(url);
-      console.log("Loaded");
-
-      tryPlay();
-
-    } catch (e) {
-      console.log("Load failed → retry");
+    } catch {
       setTimeout(reloadStream, 3000);
     }
   }
@@ -70,45 +80,23 @@
     loadPlayer();
   }
 
-  // 🔁 Try play (auto resume)
-  function tryPlay() {
-    video.play().catch(() => {
-      setTimeout(() => {
-        video.play();
-      }, 1000);
-    });
-  }
+  // 👉 CLICK TO ENABLE SOUND
+  overlay.addEventListener("click", () => {
+    video.muted = false;
+    video.volume = 1;
+    video.play();
 
-  // 🎯 AUTO RESUME kapag nag pause
-  video.addEventListener('pause', () => {
-    console.log("Paused → resume");
-    tryPlay();
+    overlay.style.display = "none";
   });
 
-  // 🎯 AUTO RESUME kapag nag buffering
-  video.addEventListener('waiting', () => {
-    console.log("Buffering → resume");
-    tryPlay();
-  });
+  // AUTO RECOVER
+  video.addEventListener('stalled', reloadStream);
+  video.addEventListener('ended', reloadStream);
 
-  // 🎯 Kapag natigil
-  video.addEventListener('stalled', () => {
-    console.log("Stalled → reload");
-    reloadStream();
-  });
-
-  // 🎯 Kapag nag end (rare sa live)
-  video.addEventListener('ended', () => {
-    console.log("Ended → reload");
-    reloadStream();
-  });
-
-  // INITIAL LOAD
   loadPlayer();
 
-  // 🔁 AUTO REFRESH every 14 mins
+  // AUTO REFRESH
   setInterval(() => {
-    console.log("Auto refresh...");
     reloadStream();
   }, 14 * 60 * 1000);
 
