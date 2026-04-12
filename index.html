@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Shaka Player Auto Resume</title>
+  <title>Advanced Shaka Player</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/shaka-player.compiled.js"></script>
 </head>
 <body>
@@ -15,46 +15,51 @@
 </video>
 
 <script>
-  const manifestUri = "http://136.239.158.10:6610/001/2/ch00000090990000001179/manifest.mpd?AuthInfo=v87HD9rEhwHiAdYyrP20Tg5pgSMSITY%2FHYvvCWJRp%2Bow35sHUcBhGBpxqddBGYEnytokK1MIobcue1ImXa0ZEA%3D%3D&version=v1.0&BreakPoint=0&virtualDomain=001.live_hls.zte.com&programid=ch00000000000000001415&contentid=ch00000000000000001415&videoid=ch00000090990000001179&recommendtype=0&userid=1205050496206&boid=001&stbid=02%3A00%3A00%3A00%3A00%3A00&terminalflag=1&profilecode=&usersessionid=02WMA0HI2O3AXX&NeedJITP=1&JITPMediaType=DASH&JITPDRMType=NO";
+const video = document.getElementById('video');
+const manifestUri = "http://136.239.158.10:6610/001/2/ch00000090990000001179/manifest.mpd?AuthInfo=v87HD9rEhwHiAdYyrP20Tg5pgSMSITY%2FHYvvCWJRp%2Bow35sHUcBhGBpxqddBGYEnytokK1MIobcue1ImXa0ZEA%3D%3D&version=v1.0&BreakPoint=0&virtualDomain=001.live_hls.zte.com&programid=ch00000000000000001415&contentid=ch00000000000000001415&videoid=ch00000090990000001179&recommendtype=0&userid=1205050496206&boid=001&stbid=02%3A00%3A00%3A00%3A00%3A00&terminalflag=1&profilecode=&usersessionid=02WMA0HI2O3AXX&NeedJITP=1&JITPMediaType=DASH&JITPDRMType=NO";
 
-  async function initPlayer() {
-    const video = document.getElementById('video');
+let player;
 
-    const player = new shaka.Player(video);
+async function init() {
+  player = new shaka.Player(video);
 
-    try {
-      await player.load(manifestUri);
-      console.log('Video loaded');
+  // ✅ ADD HEADERS + COOKIES SUPPORT
+  player.getNetworkingEngine().registerRequestFilter((type, request) => {
+    request.allowCrossSiteCredentials = true;
 
-      // 🔁 Auto Resume
-      const savedTime = localStorage.getItem('video-time');
-      if (savedTime) {
-        video.currentTime = parseFloat(savedTime);
-      }
+    // OPTIONAL: lagay mo kung kailangan
+    request.headers['Referer'] = location.href;
+    request.headers['User-Agent'] = navigator.userAgent;
+  });
 
-      // ▶️ Ensure autoplay (important sa browser policy)
-      video.play().catch(e => {
-        console.log("Autoplay blocked, user interaction needed");
-      });
+  player.addEventListener('error', onError);
 
-    } catch (error) {
-      console.error('Error loading video', error);
-    }
+  await loadVideo();
+}
 
-    // 💾 Save position every 5 seconds
-    setInterval(() => {
-      if (!video.paused) {
-        localStorage.setItem('video-time', video.currentTime);
-      }
-    }, 5000);
+async function loadVideo() {
+  try {
+    await player.load(manifestUri);
+    console.log("✅ Video loaded");
 
-    // 💾 Save when leaving page
-    window.addEventListener('beforeunload', () => {
-      localStorage.setItem('video-time', video.currentTime);
+    video.play().catch(() => {
+      console.log("Autoplay blocked");
     });
-  }
 
-  document.addEventListener('DOMContentLoaded', initPlayer);
+  } catch (e) {
+    console.error("❌ Load error, retrying...", e);
+    setTimeout(loadVideo, 3000);
+  }
+}
+
+// 🔁 AUTO RETRY PAG NAG-ERROR (TOKEN EXPIRED)
+function onError(event) {
+  console.log("⚠️ Player error, reloading...");
+  setTimeout(loadVideo, 2000);
+}
+
+// ▶️ INIT
+document.addEventListener('DOMContentLoaded', init);
 </script>
 
 </body>
