@@ -2,104 +2,59 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Sound Player</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.6/shaka-player.compiled.js"></script>
-
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: black;
-      height: 100%;
-      width: 100%;
-      overflow: hidden;
-    }
-
-    #video {
-      width: 100vw;
-      height: 100vh;
-      object-fit: contain;
-      background: black;
-    }
-
-    #overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.7);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      cursor: pointer;
-      z-index: 10;
-    }
-  </style>
+  <title>Shaka Player Auto Resume</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/shaka-player.compiled.js"></script>
 </head>
-
 <body>
 
-<div id="overlay">CLICK TO START WITH SOUND 🔊</div>
-<video id="video" playsinline></video>
+<video id="video"
+       width="800"
+       controls
+       autoplay
+       muted>
+</video>
 
 <script>
-  let player;
-  const video = document.getElementById('video');
-  const overlay = document.getElementById('overlay');
+  const manifestUri = "http://136.239.158.10:6610/001/2/ch00000090990000001179/manifest.mpd?AuthInfo=v87HD9rEhwHiAdYyrP20Tg5pgSMSITY%2FHYvvCWJRp%2Bow35sHUcBhGBpxqddBGYEnytokK1MIobcue1ImXa0ZEA%3D%3D&version=v1.0&BreakPoint=0&virtualDomain=001.live_hls.zte.com&programid=ch00000000000000001415&contentid=ch00000000000000001415&videoid=ch00000090990000001179&recommendtype=0&userid=1205050496206&boid=001&stbid=02%3A00%3A00%3A00%3A00%3A00&terminalflag=1&profilecode=&usersessionid=02WMA0HI2O3AXX&NeedJITP=1&JITPMediaType=DASH&JITPDRMType=NO";
 
-  const url = "https://cdn-ue1-prod.tsv2.amagi.tv/linear/amg01006-abs-cbn-kapcha-dash-abscbnono/index.mpd";
+  async function initPlayer() {
+    const video = document.getElementById('video');
 
-  async function loadPlayer() {
-    if (player) {
-      await player.destroy();
-    }
-
-    player = new shaka.Player(video);
-
-    player.configure({
-      drm: {
-        clearKeys: {
-          "bd17afb5dc9648a39be79ee3634dd4b8": "b475084a1a58857e18480e30fbb0e544"
-        }
-      }
-    });
-
-    player.addEventListener('error', () => reloadStream());
+    const player = new shaka.Player(video);
 
     try {
-      await player.load(url);
-    } catch {
-      setTimeout(reloadStream, 3000);
+      await player.load(manifestUri);
+      console.log('Video loaded');
+
+      // 🔁 Auto Resume
+      const savedTime = localStorage.getItem('video-time');
+      if (savedTime) {
+        video.currentTime = parseFloat(savedTime);
+      }
+
+      // ▶️ Ensure autoplay (important sa browser policy)
+      video.play().catch(e => {
+        console.log("Autoplay blocked, user interaction needed");
+      });
+
+    } catch (error) {
+      console.error('Error loading video', error);
     }
+
+    // 💾 Save position every 5 seconds
+    setInterval(() => {
+      if (!video.paused) {
+        localStorage.setItem('video-time', video.currentTime);
+      }
+    }, 5000);
+
+    // 💾 Save when leaving page
+    window.addEventListener('beforeunload', () => {
+      localStorage.setItem('video-time', video.currentTime);
+    });
   }
 
-  function reloadStream() {
-    loadPlayer();
-  }
-
-  // 👉 CLICK TO ENABLE SOUND
-  overlay.addEventListener("click", () => {
-    video.muted = false;
-    video.volume = 1;
-    video.play();
-
-    overlay.style.display = "none";
-  });
-
-  // AUTO RECOVER
-  video.addEventListener('stalled', reloadStream);
-  video.addEventListener('ended', reloadStream);
-
-  loadPlayer();
-
-  // AUTO REFRESH
-  setInterval(() => {
-    reloadStream();
-  }, 14 * 60 * 1000);
-
+  document.addEventListener('DOMContentLoaded', initPlayer);
 </script>
 
 </body>
